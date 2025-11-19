@@ -1,0 +1,160 @@
+classdef ElementClass < handle
+    properties
+        %Parameters:
+        %Zh (au) atomic number
+        %Mh (au) the mass number
+        %EII (cm^2) electron impact ionization cross section
+        %RR (cm^2) electron recombination cross section
+        %CX (cm^2) The charge exchange cross section
+        %DCX (cm^2) The double electron charge exchange cross section
+        %ion_pot (eV) the ionization potential of the element
+        %eBeam the Electron Beam Class
+        %Path (the ionization potential file of the element)
+        %Zl (au) is the element that takes part into the Charge exchange and
+        %cooling here we set the Ne as the cooling 
+        %Ml (au) is the mass number of the light eleent
+        %l_ion_pot (eV) the ionization potential of the light element for
+        %cooling
+        %Path_l (the ionization potential file of the light element)
+        Zh;
+        Mh;
+        EII;
+        RR;
+        CX;
+        DCX;
+        ion_pot; %The input document is in keV copied from NIST
+        eBeam;
+        Path;
+        Zl = 10;
+        Ml = 20;
+        l_ion_pot;
+        Path_l = "C:\Users\jialin\Desktop\phdWorks\EBIT\Script\ChargeSimulation\Ne.ion";
+    end
+    methods
+        function obj=InitialParam(obj,Z,mh)
+            %load the ionization potential first
+            obj.Zh=Z;
+            obj.Mh=mh;
+            obj.ion_pot=ion_potload(obj.Path);
+            obj.l_ion_pot=ion_potload(obj.Path_l);
+            obj.EII=EII_cross();
+            obj.RR=RR_cross();
+            obj.CX=CX_cross();
+            obj.DCX=DCX_cross();
+
+            function ion_pot=ion_potload(Path)
+                temp=readmatrix(Path,'FileType','text');
+                %Convert from keV to eV
+                ion_pot = temp(:,2)*1e+3;
+                ion_pot = transpose(ion_pot);
+                %Make Sure all the input parmeters are the row vector
+            end
+
+            function EII=EII_cross()
+                %The electron impact ionization cross section calculation
+                %ref: https://doi.org/10.1007/BF01325928
+                %EII(1) means the EII cross section from Sn I Sn II
+                z = obj.Zh;
+                ebm = obj.eBeam.Energy;
+                %%input parameter explaining
+                %%Z (au): the atomic number of the element
+                %%ebm (eV): the electron beam energy
+                %%ion_pot (eV): the ionization energy sort from low to high
+                e_mass=obj.eBeam.me_eV;%511keV
+                lotz_const=4.5e-14;
+                shell=[0,2,10,18,28,36,46,60,68,78,0];%the last 0 for the array 
+                cross=zeros(1,z);
+                EII=zeros(1,z+1);
+                %i the no. of electrons in the ion from 1 to z
+                %j the electron no. to remove from the ion from 1 to z
+                for i=1:z
+                    j=z+1-i;
+                    if ebm>obj.ion_pot(j)
+                        cross(i)=log(ebm/obj.ion_pot(j))/(ebm*obj.ion_pot(j));
+                        %relativity correction
+                        eps=ebm/e_mass;
+                        tau=obj.ion_pot(j)/e_mass;
+                        rel=(tau+eps)*(eps+2.0)*(tau+1.0)^2/...
+                            ((eps*(eps+2.0)*(tau+1.0)^2)+(tau*(tau+2.0)));
+                        rel=rel^1.5;
+                        rel=rel*((eps+1.0)/(tau+1.0))^2;
+                        rel=rel*((tau+2)/(eps+2));
+                        % rel = 1;
+                        cross(i)=cross(i)*rel;
+                    else
+                        cross(i)=0;
+                    end
+                end
+                %i the no. of electrons in the ion from 1 to z
+                %j the electron no. to remove from the ion from 1 to z
+                %k the shell no.
+                k=1;
+                inner=0;
+                last_shell=shell(k);
+                k=k+1;
+                closed_shell=shell(k);
+                for i=1:z
+                    j=z+1-i;
+                    EII(j)=lotz_const*(i-last_shell)*cross(i);%+inner;
+                    if i==closed_shell
+                        last_shell=closed_shell;
+                        k=k+1;
+                        closed_shell=shell(k);
+                        % inner=EII(j);
+                    end
+                end
+                EII(z+1)=0;
+                C1 = ebm>obj.ion_pot;
+                EII = EII.*[C1,false];
+                %The highest charge state ionization cross section is 0;
+            end
+
+            function RR=RR_cross()
+                shell = [0,2,10,28,60,0];%last 0 for the index problem
+                k = 1;
+                last_shell = shell(k);
+                k = k+1;
+                closed_shell = shell(k);
+                z = obj.Zh;
+                j = z+1;
+                FS_CON = 7.2974e-3;
+                L_CONV = 3.861e-11;
+                RR_CONST = 3.5296e-2;
+                for i = 1:z+1
+                    % i = the no. of electrons in the ion from 0...z */
+                    % j = the charge of the ion from 1...z */
+                    if(i-1==closed_shell)
+                        last_shell=closed_shell;
+                        closed_shell=shell(k+1);
+                        k = k+1;
+                    end
+                    zeff=(z+j-1)/2.0;
+                    x = (zeff*FS_CON)^2.0 * obj.eBeam.me_eV / obj.eBeam.Energy;
+                    wn0 = (closed_shell - i-1)/ (closed_shell - last_shell);
+                    neff=(k-2) + (1.0 - wn0) - 0.3;
+                    RR(j) = L_CONV^2.0 * RR_CONST * x...
+                        * log(1.0 + x/(2.0 * neff^2.0));
+                    j = j-1;
+                end
+                RR(1) = 0.0;  % You can't recombine to a neutral atom
+            end
+
+            function CX=CX_cross()
+                %The charge exchange cross section calculation
+                %using the Mueller Salzborn formula
+                z=linspace(1,obj.Zh,obj.Zh);
+                ion_p=obj.l_ion_pot;
+                CX=1.43e-16.*z.^1.17.*ion_p(1).^(-2.76)*10^4;
+                CX=[0,CX];%The neutral atoms 
+            end
+
+            function DCX=DCX_cross()
+                %The double electron charge exchange cross section
+                z = linspace(2,obj.Zh,obj.Zh-1);
+                ion_p=obj.l_ion_pot;
+                DCX=1.08e-12.*z.^0.71.*ion_p(1).^(-2.8);
+                DCX=[0,0,DCX];%The neutral atoms
+            end
+        end
+    end
+end
