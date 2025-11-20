@@ -40,8 +40,8 @@ classdef PlasmaClass < handle
         ni;
         dnidt
         ni_min = 1e-6;
-        n0_HCI = 1e+9;
-        n0_LCI = 1e+5;
+        n0_HCI = 1e+8;
+        n0_LCI = 1e+6;
         eBeam;
         ei_e_rate;
         clog_ij;
@@ -147,10 +147,12 @@ classdef PlasmaClass < handle
             q = [0:Zh, 0:Zl];
             e = 1.602e-19;
             eps0 = 8.854e-12;
-            Y = 4*pi*(q*e^2/(4*pi*eps0*me)).^2.*coulog_ei;
+            % Y = 4*pi*(q*e^2/(4*pi*eps0*me)).^2.*coulog_ei;
+            Y = 4*pi*(q*e^2/(4*pi*eps0*me)).^2.*coulog_ei/obj.eBeam.Velocity^4;
             Mi = [ones(1,Zh+1)*mi_H, ones(1,Zl+1)*mi_L];
-            ei_e_rate = 2/3*Y*ne*1e+6*me^2./Mi/(obj.eBeam.Velocity);
-            ei_e_rate = ei_e_rate/e;%Because of the kbTi is in (eV)
+            % ei_e_rate = 2/3*Y*ne*1e+6*me^2./Mi/(obj.eBeam.Velocity);
+            % ei_e_rate = ei_e_rate/e;%Because of the kbTi is in (eV)
+            ei_e_rate = 2/3*Y*ne*1e+6*obj.eBeam.Velocity*2*me./Mi*obj.eBeam.Energy;
             C1 = (obj.ni>=obj.ni_min);
             ei_e_rate = ei_e_rate.*C1;
         end
@@ -250,9 +252,11 @@ classdef PlasmaClass < handle
 
         function esc_e_r_rate = esc_e_r_r(obj)
             %The calculation of the energy loss rate from the trap
-            au2kg = 1.6602e-27;
+            au2kg = 1.6605e-27;
             e = 1.602e-19;
             Zi = [0:obj.HCI.Zh, 0:obj.LCI.Zh];
+            Zh = obj.HCI.Zh; Zl = obj.LCI.Zh;
+            Mh = obj.HCI.Mh; Ml = obj.LCI.Mh;
             B = obj.eBeam.B_field;
             Mi = [ones(1,Zh+1)*Mh*au2kg,ones(1,Zl+1)*Ml*au2kg];%kg
             v_theta = sqrt(2*obj.Ti*e./(3*Mi));
@@ -318,7 +322,7 @@ classdef PlasmaClass < handle
 
         function ESC_a_rate = ESC_a_r(obj)
             nu_i = transpose(sum(obj.nu_ij,2));
-            ESC_a_rate = -obj.ni.*nu_i.*exp(-obj.omega_i)./obj.omega_i;
+            ESC_a_rate = -3/sqrt(2)*obj.ni.*nu_i.*exp(-obj.omega_i)./obj.omega_i;
             % C1 = obj.ni>obj.ni_min;
             % ESC_a_rate = C1.*ESC_a_rate;
             ESC_a_rate(1) = 0; ESC_a_rate(obj.HCI.Zh+2) = 0;
@@ -326,7 +330,7 @@ classdef PlasmaClass < handle
 
         function ESC_r_rate = ESC_r_r(obj)
             nu_i = transpose(sum(obj.nu_ij,2));
-            ESC_r_rate = -obj.ni.*nu_i.*exp(-obj.omega_r_i)./obj.omega_r_i;
+            ESC_r_rate = -3/sqrt(2)*obj.ni.*nu_i.*exp(-obj.omega_r_i)./obj.omega_r_i;
             ESC_r_rate(1) = 0; ESC_r_rate(obj.HCI.Zh+2) = 0;
         end
 
@@ -343,11 +347,14 @@ classdef PlasmaClass < handle
             ESC_a_h = obj.ESC_a_rate(2:(Zh+1));
             ESC_r_h = obj.ESC_r_rate(2:(Zh+1));
             dnidt(1) = -obj.EII_rate(1)+obj.RR_rate(2)+obj.CX_rate(2)+obj.DCX_rate(3); 
-            dnidt(2:(Zh+1)) = EII_im1_i_h-EII_i_ip1_h+RR_ip1_i_h-RR_i_im1_h+CX_ip1_i_h-CX_i_im1_h+ESC_a_h;
+            % dnidt(1) = 0;
+
+
+            dnidt(2:(Zh+1)) = EII_im1_i_h-EII_i_ip1_h+RR_ip1_i_h-RR_i_im1_h+CX_ip1_i_h-CX_i_im1_h+ESC_a_h+ESC_r_h;
             DCX_ip2_i = [obj.DCX_rate(4:Zh+1),0,0];
             DCX_i_im2 = [0,obj.DCX_rate(3:Zh+1)];
+
             dnidt(2:Zh+1) = dnidt(2:Zh+1)+DCX_ip2_i-DCX_i_im2;
-            %Taking double electron charge exchange only for HCI
             
             Zl = obj.HCI.Zl;
             id = Zh+1;
@@ -358,11 +365,56 @@ classdef PlasmaClass < handle
             CX_ip1_i_l = [obj.CX_rate((3:(Zl+1))+id),0];
             CX_i_im1_l = obj.CX_rate((2:(Zl+1))+id);
             ESC_a_l = obj.ESC_a_rate((2:(Zl+1))+id);
+            ESC_r_l = obj.ESC_r_rate((2:(Zl+1))+id);
             % dnidt(Zh+2) = -obj.EII_rate(1+id)+obj.RR_rate(2+id)+obj.CX_rate(2+id);
             dnidt(Zh+2) = 0;
-            dnidt(Zh+3:end) = EII_im1_i_l-EII_i_ip1_l+RR_ip1_i_l-RR_i_im1_l+CX_ip1_i_l-CX_i_im1_l+ESC_a_l;
+
+            dnidt(Zh+3:end) = EII_im1_i_l-EII_i_ip1_l+RR_ip1_i_l-RR_i_im1_l+CX_ip1_i_l-CX_i_im1_l+ESC_a_l+ESC_r_l;
             DCX_ip2_i = [obj.DCX_rate((4:Zl+1)+id),0,0];
             DCX_i_im2 = [0,obj.DCX_rate((3:Zl+1)+id)];
+
+            dnidt(Zh+3:end) = dnidt(Zh+3:end)+DCX_ip2_i-DCX_i_im2;
+        end
+
+        function [dnidt,dTidt]= Rate_eq_(obj)
+            dnidt = ones(1,obj.HCI.Zh+obj.HCI.Zl+2);
+            dTidt = obj.ei_e_rate + obj.ii_ex_rate + obj.esc_e_rate+obj.esc_e_r_rate;
+            Zh = obj.HCI.Zh;
+            EII_im1_i_h = obj.EII_rate(1:Zh);
+            EII_i_ip1_h = obj.EII_rate(2:(Zh+1));
+            RR_ip1_i_h = [obj.RR_rate(3:(Zh+1)),0];
+            RR_i_im1_h = obj.RR_rate(2:(Zh+1));
+            CX_ip1_i_h = [obj.CX_rate(3:(Zh+1)),0];
+            CX_i_im1_h = obj.CX_rate(2:(Zh+1));
+            ESC_a_h = obj.ESC_a_rate(2:(Zh+1));
+            ESC_r_h = obj.ESC_r_rate(2:(Zh+1));
+            dnidt(1) = -obj.EII_rate(1)+obj.RR_rate(2)+obj.CX_rate(2)+obj.DCX_rate(3); 
+            % dnidt(1) = 0;
+
+
+            dnidt(2:(Zh+1)) = EII_im1_i_h-EII_i_ip1_h+RR_ip1_i_h-RR_i_im1_h+CX_ip1_i_h-CX_i_im1_h+ESC_a_h+ESC_r_h;
+            DCX_ip2_i = [obj.DCX_rate(4:Zh+1),0,0];
+            DCX_i_im2 = [0,obj.DCX_rate(3:Zh+1)];
+
+            dnidt(2:Zh+1) = dnidt(2:Zh+1)+DCX_ip2_i-DCX_i_im2;
+            
+            Zl = obj.HCI.Zl;
+            id = Zh+1;
+            EII_im1_i_l = obj.EII_rate((1:Zl)+id);
+            EII_i_ip1_l = obj.EII_rate((2:(Zl+1))+id);
+            RR_ip1_i_l = [obj.RR_rate((3:(Zl+1))+id),0];
+            RR_i_im1_l = obj.RR_rate((2:(Zl+1))+id);
+            CX_ip1_i_l = [obj.CX_rate((3:(Zl+1))+id),0];
+            CX_i_im1_l = obj.CX_rate((2:(Zl+1))+id);
+            ESC_a_l = obj.ESC_a_rate((2:(Zl+1))+id);
+            ESC_r_l = obj.ESC_r_rate((2:(Zl+1))+id);
+            % dnidt(Zh+2) = -obj.EII_rate(1+id)+obj.RR_rate(2+id)+obj.CX_rate(2+id);
+            dnidt(Zh+2) = 0;
+
+            dnidt(Zh+3:end) = EII_im1_i_l-EII_i_ip1_l+RR_ip1_i_l-RR_i_im1_l+CX_ip1_i_l-CX_i_im1_l+ESC_a_l+ESC_r_l;
+            DCX_ip2_i = [obj.DCX_rate((4:Zl+1)+id),0,0];
+            DCX_i_im2 = [0,obj.DCX_rate((3:Zl+1)+id)];
+
             dnidt(Zh+3:end) = dnidt(Zh+3:end)+DCX_ip2_i-DCX_i_im2;
         end
 

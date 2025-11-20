@@ -27,6 +27,7 @@ classdef PlasmaClass < handle
         %omega_i: The potential over Ti characteristic frequency
         %omega_r_i: Same as omega_i but for radial
         %esc_e_rate (eV.cm^3/s) The energy loss rate from the trap
+        %S_term (/cm^3/s) the injection rate of the target atoms
         f;
         Phi_r;
         r_DT = 2e-3;
@@ -57,6 +58,7 @@ classdef PlasmaClass < handle
         EII_rate;
         ESC_a_rate;
         ESC_r_rate;
+        S_term = 0;
     end
     methods
         function obj=InitialParm(obj)
@@ -335,7 +337,7 @@ classdef PlasmaClass < handle
         end
 
         function [dnidt,dTidt]= Rate_eq(obj)
-            dnidt = ones(1,obj.HCI.Zh+obj.HCI.Zl+2);
+            dnidt = zeros(1,obj.HCI.Zh+obj.HCI.Zl+2);
             dTidt = obj.ei_e_rate + obj.ii_ex_rate + obj.esc_e_rate+obj.esc_e_r_rate;
             Zh = obj.HCI.Zh;
             EII_im1_i_h = obj.EII_rate(1:Zh);
@@ -346,8 +348,8 @@ classdef PlasmaClass < handle
             CX_i_im1_h = obj.CX_rate(2:(Zh+1));
             ESC_a_h = obj.ESC_a_rate(2:(Zh+1));
             ESC_r_h = obj.ESC_r_rate(2:(Zh+1));
-            % dnidt(1) = -obj.EII_rate(1)+obj.RR_rate(2)+obj.CX_rate(2)+obj.DCX_rate(3); 
-            dnidt(1) = 0;
+            dnidt(1) = -obj.EII_rate(1)+obj.RR_rate(2)+obj.CX_rate(2)+obj.DCX_rate(3)+obj.S_term; 
+            % dnidt(1) = 0;
 
 
             dnidt(2:(Zh+1)) = EII_im1_i_h-EII_i_ip1_h+RR_ip1_i_h-RR_i_im1_h+CX_ip1_i_h-CX_i_im1_h+ESC_a_h+ESC_r_h;
@@ -355,7 +357,6 @@ classdef PlasmaClass < handle
             DCX_i_im2 = [0,obj.DCX_rate(3:Zh+1)];
 
             dnidt(2:Zh+1) = dnidt(2:Zh+1)+DCX_ip2_i-DCX_i_im2;
-            %Taking double electron charge exchange only for HCI
             
             Zl = obj.HCI.Zl;
             id = Zh+1;
@@ -375,6 +376,24 @@ classdef PlasmaClass < handle
             DCX_i_im2 = [0,obj.DCX_rate((3:Zl+1)+id)];
 
             dnidt(Zh+3:end) = dnidt(Zh+3:end)+DCX_ip2_i-DCX_i_im2;
+        end
+
+        function [dnidt,dTidt]= Rate_eq_without_temperature(obj)
+            dnidt = zeros(1,obj.HCI.Zh+obj.HCI.Zl+2);
+            Zh = obj.HCI.Zh;
+            EII_im1_i_h = obj.EII_rate(1:Zh);
+            EII_i_ip1_h = obj.EII_rate(2:(Zh+1));
+            RR_ip1_i_h = [obj.RR_rate(3:(Zh+1)),0];
+            RR_i_im1_h = obj.RR_rate(2:(Zh+1));
+            CX_ip1_i_h = [obj.CX_rate(3:(Zh+1)),0];
+            CX_i_im1_h = obj.CX_rate(2:(Zh+1));
+            
+            dnidt(1) = -obj.EII_rate(1)+obj.RR_rate(2)+obj.CX_rate(2)+obj.S_term; 
+            % dnidt(1) = 0; 
+            % dnidt(1) = 0;
+
+            dnidt(2:(Zh+1)) = EII_im1_i_h-EII_i_ip1_h+RR_ip1_i_h-RR_i_im1_h+CX_ip1_i_h-CX_i_im1_h;
+            dTidt = obj.dTidt;
         end
 
     end
