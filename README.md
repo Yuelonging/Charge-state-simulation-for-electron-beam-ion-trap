@@ -181,3 +181,21 @@ return type ***(Z+1)x1 vector***
 ***CX_cross, DCX_cross():*** the single and double electron charge exchange cross section calculaiton in $cm^2$ unit
 
 return type ***(Z+1)x1 vector***
+
+### PlasmaClass
+This class will construct all kinds of plasma parameters and two-version equation rate equation (with and without ion temperature calculation)
+
+#### What you need to input
+***r_DT:*** The center drift tube radius in meter (m) unit;
+
+***Vw:*** The potential applied on the surrending drift tubes in Volt (V) unit (The approximation is based on the square potential well);
+
+***Ti_min:*** The minimum ion temperature in electron volt (eV). (The temperature can not be negative, so a minimum ion temperature is set)
+
+***ni_min:*** The minimum ion density that taking part in the plasma evolution, once the density of the specific ion species is lower than ni_min, the changing rate the ion will be set to 0 ($cm^{-3}$);
+
+***n0_HCI***: The absolute initial density of the neutral HCI atoms density ($cm^{-3}$);
+
+***n0_LCI***: The absolute initial density of the neutral LCI atoms density ($cm^{-3}$);
+
+#### What is calculated in this class
