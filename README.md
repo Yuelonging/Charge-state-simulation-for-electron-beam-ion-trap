@@ -198,4 +198,6 @@ This class will construct all kinds of plasma parameters and two-version equatio
 
 ***n0_LCI***: The absolute initial density of the neutral LCI atoms density ($cm^{-3}$);
 
+***S_term***: Source term of the continous injected element. Please use it in the no-temperature situation. If you need to use it in ion evolution with temperature, please set the n0_HCI = 0, and do not set the S_term value too large (1e+4 is a suitable value).
+
 #### What is calculated in this class
