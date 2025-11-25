@@ -227,10 +227,83 @@ This class will construct all kinds of plasma parameters and two-version equatio
 
 ***nu_ij:*** The ion-ion collision rate between the i and j ionic species;
 
-***ii_ex_rate:**** The ion-ion energy exchange rate between the i ionic specie and all other ions;
+***ii_ex_rate:*** The ion-ion energy exchange rate between the i ionic specie and all other ions;
 
 ***omega_i:*** The characteristic frequency of the ion escaping from the axial direction only taking axial potential into consideration;
 
 ***omega_r_i:*** The characteristic frequency of the ion escaping from the radial direction combined the Beam potential with the magentic field;
 
-***esc_e_rate:*** The 
+***esc_e_rate:*** The energy loss rate in the axial direction ($eV.cm^3/s$);
+
+***esc_e_r_rate:*** The energy loss rate in the radial direction ($eV.cm^3/s$);
+
+***RR_rate:*** The RR rate, which is $\frac{j_e}{e}n_i\sigma_{RR}f$;
+
+***CX_rate:*** The single electron charge exchange rate, which is $n_0n_i\sigma_{CX}\overline{v_i}$. $\overline{v_i}=\sqrt{\frac{8T_ie}{m_i\pi}}$;
+
+***DCX_rate:*** The double electron charge exchange rate. Formula same as the CX_rate;
+
+***EII_rate:*** The EII rate, which is $\frac{j_e}{e}n_i\sigma_{EII}f$;
+
+***ESC_a_rate:*** The escape rate of the ion from the trap axially;
+
+***ESC_r_rate:*** The escape rate of the ion from the trap radially.
+
+#### Methods
+***InitialParm(obj):*** Initilization of the Te, Ti, dnidt, dTidt, f, Phi_r.
+
+&emsp;***Te_calculation():*** Electron temperature estimation.
+
+&emsp;return type ***scalar***
+
+&emsp;***Ti_initialization():*** Initialization of the ion temperature and temperature changing rate. The Ti is set to 1.1*Ti_min, and the dTidt is set to 0.
+
+&emsp;return type Ti:***1x(Zh+Zl+2) Vector*** dTidt:***1x(Zh+Zl+2) Vector***
+
+&emsp;***ni_initialization():*** Initialization of the ion ambulance, the HCI I and LCI I is set to a given value.
+
+&emsp;return type ni:***1x(Zh+Zl+2) Vector*** dnidt:***1x(Zh+Zl+2) Vector***
+
+&emsp;***f_Initialization()*** Initialization of the overlapping factor for the electron beam and ion beam.
+
+&emsp;return type: ***1x(Zh+Zl+2)***
+
+&emsp;***radial_trap_strength()*** Directly calculate the potential difference between the center beam and trap edge.
+
+&emsp;return type: ***scalar***
+
+***c_ei():*** Calculation for the coulomb logarithum for electron and ion, and the energy exchange rate between ion and electron.
+
+return type: ei_e_rate:***1x(Zh+Zl+2) vector***
+
+***ii_ex_r():*** Calculation for the ion-ion energy exchange rate.
+
+return type: ii_ex_rate:***1x(Zh+Zl+2) vector***
+
+&emsp;***clog_ii(Index)*** The index here is the a traversal for the [HCI, LCI] array (corresponding the charge state [I,II,III...N, I,II,III...M]).
+
+&emsp;return type: ***1x(Zh+Zl+2) vector***, corresponding i ion specie between all the other ion.
+
+&emsp;***nu_ii(clog_ij_r):*** clog_ij_r: the coulomb logarithum matrix after the index loop, so it should be a ***(Zh+Zl+2)x(Zh+Zl+2) matrix***. The function
+
+&emsp;will calculate the ion-ion collisional rate.
+
+&emsp;return type:***(Zh+Zl+2)x(Zh+Zl+2) matrix***
+
+&emsp;***ii_ex():*** transpose and sum the nu_ij matrix, and calculate the energy transfer rate.
+
+&emsp;return type:***1x(Zh+Zl+2) vector***
+
+***esc_e_r(obj), esc_e_r_rate(obj):*** The energy loss rate from the trap radially and axially. The radial lossing rate including the magentic field contribution.
+
+return type: ***1x(Zh+Zl+2) vector***
+
+***RR_r(obj),EII_r(obj),CX_r(obj),DCX_r(obj),ESC_a_r(obj),ESC_r_r(obj):*** The calculation of the ion RR EII CX DCX ESC rate ($/s/cm^3$)
+
+return type: ***1x(Zh+Zl+2) vector***
+
+***Rate_eq(obj):***
+
+$$
+
+$$
