@@ -201,3 +201,36 @@ This class will construct all kinds of plasma parameters and two-version equatio
 ***S_term***: Source term of the continous injected element. Please use it in the no-temperature situation. If you need to use it in ion evolution with temperature, please set the n0_HCI = 0, and do not set the S_term value too large (1e+4 is a suitable value).
 
 #### What is calculated in this class
+***f:*** The overlapping factor beween the electron and the ion cloud. In the current situation, *f* is setting to 1 for each ionic species;
+
+***Phi_r:*** The radial trap potential from the electron beam. Now, the trap potential calculaiton is based on the cylindrical approximation of the electron beam and the Non-relativistic calculation of the line charge density (V);
+
+***HCI:*** The reference class of the heavy target HCI ElementClass;
+
+***LCI:*** The reference class of the light cooling LCI ElementClass;
+
+***Ti:*** The ion temperature vector for all HCI and LCI (eV);
+
+***dTidt:*** The first time derivative of the ion temperature (eV/s);
+
+***Te:*** The electron temperature (eV). The electron temperature calculation is approximated as $0.1\frac{j_e}{j_c}$;
+
+***ni:*** The ion density ($cm^{-3}$);
+
+***dnidt:*** The first time derivative of the ion density ($cm^{-3}/s$);
+
+***eBeam:*** The reference class of the ElectronBeamClass;
+
+***ei_e_rate:*** The electron ion energy exchange rate ($eV.cm^3/s$), which is the $\nu_{ei}$;
+
+***clog_ij:*** The ion-ion coulomb logarithum martix;
+
+***nu_ij:*** The ion-ion collision rate between the i and j ionic species;
+
+***ii_ex_rate:**** The ion-ion energy exchange rate between the i ionic specie and all other ions;
+
+***omega_i:*** The characteristic frequency of the ion escaping from the axial direction only taking axial potential into consideration;
+
+***omega_r_i:*** The characteristic frequency of the ion escaping from the radial direction combined the Beam potential with the magentic field;
+
+***esc_e_rate:*** The 
