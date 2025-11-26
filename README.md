@@ -302,8 +302,157 @@ return type: ***1x(Zh+Zl+2) vector***
 
 return type: ***1x(Zh+Zl+2) vector***
 
-***Rate_eq(obj):***
+***Rate_eq(obj):*** Construct the charge state and temperature evolution equations
 
 $$
+\begin{align}
+\frac{dn_0}{dt}=S_{term}+\frac{j_e}{e}f(-n_0\sigma^{EII}_{0&rarr;1}+n_1\sigma^{RR}_{1&rarr;0})+N_0n_1\overline{v_1}\sigma^{CX}_{1&rarr;0},\\
+...\\
+\frac{dn_i}{dt}=\frac{j_e}{e}f(-n_i\sigma^{EII}_{i&rarr;i+1}+n_{i-1}\sigma^{EII}_{i-1&rarr;i}+n_{i+1}\sigma^{RR}_{i+1&rarr;i}-n_i\sigma^{RR}_{i&rarr;i-1})
++N_0(n_{i+1}\overline{v}_{i+1}\sigma^{CX}_{i+1&rarr;i}-n_{i}\overline{v}_{i}\sigma^{CX}_{i&rarr;i-1})
+-\frac{3}{\sqrt{2}}n_i\nu_i\frac{e^{-\omega_i}}{\omega_i},\\
+...\\
+\frac{dn_m}{dt}=\frac{j_e}{e}f(n_{m-1}\sigma^{EII}_{m-1&rarr;m}-n_m\sigma^{RR}_{m&rarr;m-1})
+-N_0(n_{m}\overline{v}_{m}\sigma^{CX}_{m&rarr;m-1})
+-\frac{3}{\sqrt{2}}n_m\nu_m\frac{e^{-\omega_m}}{\omega_m},\\
+\frac{dT_i}{dt}=\frac{2}{3}n_e\frac{m_e^2}{m_iv_e}4\pi(\frac{q_ie^2}{(4\pi\epsilon_0m_e})^2ln\Lambda_i
++2\nu_{ij}\frac{M_i}{M_j}\frac{T_j-T_i}{(1+\frac{M_iT_j}{M_jT_i})^{3/2}}
+-\frac{2}{3}\nu_ie^{-\omega_i}T_i
+\end{align}
+$$
+
+***Rate_eq_without_temperature(obj):*** To construct the rate equation without the ion temperature parameter taking part in the charge state ecolution
 
 $$
+\begin{align}
+\frac{dn_0}{dt}=S_{term}+\frac{j_e}{e}f(-n_0\sigma^{EII}_{0&rarr;1}+n_1\sigma^{RR}_{1&rarr;0})+N_0n_1\overline{v_1}\sigma^{CX}_{1&rarr;0},\\
+...\\
+\frac{dn_i}{dt}=\frac{j_e}{e}f(-n_i\sigma^{EII}_{i&rarr;i+1}+n_{i-1}\sigma^{EII}_{i-1&rarr;i}+n_{i+1}\sigma^{RR}_{i+1&rarr;i}-n_i\sigma^{RR}_{i&rarr;i-1})
++N_0(n_{i+1}\overline{v}_{i+1}\sigma^{CX}_{i+1&rarr;i}-n_{i}\overline{v}_{i}\sigma^{CX}_{i&rarr;i-1})\\
+...\\
+\frac{dn_m}{dt}=\frac{j_e}{e}f(n_{m-1}\sigma^{EII}_{m-1&rarr;m}-n_m\sigma^{RR}_{m&rarr;m-1})
+-N_0(n_{m}\overline{v}_{m}\sigma^{CX}_{m&rarr;m-1})
+\end{align}
+$$
+
+### Main
+In this chapter, I will introduce how to construct a script. The progress is based on that you have set all the required parameters in the class (There is an instruction in each chapter ***What you need to input*** section).
+```
+Ebeam = ElectronBeamClass();
+Ebeam = Ebeam.InitialParam();
+Pb = ElementClass();
+Pb.eBeam = Ebeam;
+Pb.Path = "C:\Users\jialin\Desktop\phdWorks\EBIT\Script\ChargeSimulation\U.ion";
+Pb = Pb.InitialParam(92,238);
+Ne = ElementClass();
+Ne.eBeam = Ebeam;
+Ne.Path = "C:\Users\jialin\Desktop\phdWorks\EBIT\Script\ChargeSimulation\Ne.ion";
+Ne = Ne.InitialParam(10,20);
+```
+First, you need to the ElectronBeamClass, ElementClass, loading the Ionization potential for both HCI and LCI, and call the ***InitialParam()*** to calculate the needed property in the class.
+```
+EBIT=PlasmaClass();
+EBIT.HCI=Pb;EBIT.LCI=Ne;EBIT.eBeam=Ebeam;
+EBIT = EBIT.InitialParm();
+EBIT.ei_e_rate = EBIT.c_ei();
+EBIT.ii_ex_rate=EBIT.ii_ex_r();
+EBIT.esc_e_rate=EBIT.esc_e_r();
+EBIT.esc_e_r_rate=EBIT.esc_e_r_r();
+EBIT.RR_rate=EBIT.RR_r();
+EBIT.EII_rate=EBIT.EII_r();
+EBIT.CX_rate=EBIT.CX_r();
+EBIT.DCX_rate=EBIT.DCX_r();
+EBIT.ESC_a_rate=EBIT.ESC_a_r();
+EBIT.ESC_r_rate=EBIT.ESC_r_r();
+[EBIT.dnidt,EBIT.dTidt] = EBIT.Rate_eq();
+Zh = EBIT.HCI.Zh;
+Zl = EBIT.HCI.Zl;
+```
+Calling the PlasmaClass and intializae all the rate coeficient.
+```
+Y0 = transpose([EBIT.ni,EBIT.Ti]);
+t_span = [0,100];
+opts = odeset('NonNegative', [1:2*(Zh+Zl+2)], 'MaxStep',2);
+ode_fun = @(t, Y) ode_wrapper(t, Y, EBIT);
+[t, Y] = ode23t(ode_fun,t_span, Y0,opts);
+```
+Set the odeset, and solve the equation
+```
+function dYdt = ode_wrapper(t, Y, obj)
+    Zh = obj.HCI.Zh;
+    Zl = obj.HCI.Zl;
+    obj.ni = transpose(Y(1:Zh+Zl+2));
+    obj.Ti = transpose(Y(Zh+Zl+3:end));
+    eq_updating(obj);
+    dYdt = transpose([obj.dnidt,obj.dTidt]);
+    function eq_updating(obj)
+        obj.ni(find(obj.ni<obj.ni_min))=obj.ni_min;
+        obj.Ti(find(obj.Ti<obj.Ti_min))=obj.Ti_min;
+        obj.ei_e_rate = obj.c_ei();
+        obj.ii_ex_rate=obj.ii_ex_r();
+        obj.esc_e_rate=obj.esc_e_r();
+        obj.esc_e_r_rate=obj.esc_e_r_r();
+        obj.RR_rate=obj.RR_r();
+        obj.EII_rate=obj.EII_r();
+        obj.CX_rate=obj.CX_r();
+        obj.DCX_rate=obj.DCX_r();
+        obj.ESC_a_rate=obj.ESC_a_r();
+        obj.ESC_r_rate=obj.ESC_r_r();
+        [obj.dnidt,obj.dTidt] = obj.Rate_eq();
+    end
+end
+```
+The ode wrapper, just updating all the rate coefficient after a time step.
+
+### Main_no_temperature
+Here is an version without temperature calculation.
+```
+Ebeam = ElectronBeamClass();
+Ebeam = Ebeam.InitialParam();
+Pb = ElementClass();
+Pb.eBeam = Ebeam;
+Pb.Path = "C:\Users\jialin\Desktop\phdWorks\EBIT\Script\ChargeSimulation\U.ion";
+Pb = Pb.InitialParam(92,238);
+Ne = ElementClass();
+Ne.eBeam = Ebeam;
+Ne.Path = "C:\Users\jialin\Desktop\phdWorks\EBIT\Script\ChargeSimulation\Ne.ion";
+Ne = Ne.InitialParam(10,20);
+%% Initialization of the rate equation
+EBIT=PlasmaClass();
+EBIT.HCI=Pb;EBIT.LCI=Ne;EBIT.eBeam=Ebeam;
+
+%%
+EBIT = EBIT.InitialParm();
+EBIT.RR_rate=EBIT.RR_r();
+EBIT.EII_rate=EBIT.EII_r();
+EBIT.CX_rate=EBIT.CX_r();
+
+[EBIT.dnidt,EBIT.dTidt] = EBIT.Rate_eq_without_temperature();
+Zh = EBIT.HCI.Zh;
+Zl = EBIT.HCI.Zl;
+
+%%
+Y0 = transpose([EBIT.ni,EBIT.Ti]);
+t_span = [0,1000];
+opts = odeset('NonNegative', [1:2*(Zh+Zl+2)], 'MaxStep',2);
+ode_fun = @(t, Y) ode_wrapper(t, Y, EBIT);
+[t, Y] = ode23t(ode_fun,t_span, Y0,opts);
+
+function dYdt = ode_wrapper(t, Y, obj)
+    Zh = obj.HCI.Zh;
+    Zl = obj.HCI.Zl;
+    obj.ni = transpose(Y(1:Zh+Zl+2));
+    obj.Ti = transpose(Y(Zh+Zl+3:end));
+    eq_updating(obj);
+    dYdt = transpose([obj.dnidt,obj.dTidt]);
+    function eq_updating(obj)
+        obj.ni(find(obj.ni<obj.ni_min))=obj.ni_min;
+        obj.Ti(find(obj.Ti<obj.Ti_min))=obj.Ti_min;
+        obj.RR_rate=obj.RR_r();
+        obj.EII_rate=obj.EII_r();
+        obj.CX_rate=obj.CX_r();
+        [obj.dnidt,obj.dTidt] = obj.Rate_eq_without_temperature();
+    end
+end
+```
+The Initialization progress is the same. Just call the rate_eq_without_temperature function instead of rate_eq. And there is a modification for the wrapper function.
