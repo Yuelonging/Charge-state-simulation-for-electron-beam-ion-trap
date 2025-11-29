@@ -1,6 +1,6 @@
 #  Project struce
 This program consists of three classes: ElectronBeam, Element, Plasma. By pre-defining the parameters, 
-you could simulate the charge state distribution in the with a given electron energy.
+you could simulate the charge state distribution and ion temperature with a given configuration.
 
 ## The ion charge state 
 In the following chaper, I will introduce the physical progress determing the charge state that hase been considered.
